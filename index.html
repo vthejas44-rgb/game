@@ -12,7 +12,7 @@
   #wrap{position:relative;max-width:960px;margin:0 auto;user-select:none;-webkit-user-select:none}
   canvas{width:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;background:#000}
   #panel{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;
-    background:rgba(5,15,18,.86);text-align:center;padding:14px;gap:12px;font-size:clamp(8px,1.6vw,13px);line-height:1.7}
+    background:rgba(5,15,18,.88);text-align:center;padding:14px;gap:12px;font-size:clamp(8px,1.6vw,13px);line-height:1.7}
   #panel h1{font-size:clamp(14px,3.4vw,28px);margin:0;color:var(--gold);text-shadow:3px 3px 0 var(--red)}
   #panel h2{font-size:clamp(11px,2.2vw,18px);margin:0;color:var(--gold)}
   button{font-family:inherit;font-size:clamp(8px,1.5vw,12px);color:var(--ink);background:var(--teal);border:3px solid #0b3a3d;
@@ -20,7 +20,7 @@
   button:active{transform:translateY(3px);box-shadow:0 1px 0 #0b3a3d}
   button.alt{background:var(--red);border-color:#5e1128;box-shadow:0 4px 0 #5e1128}
   .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-  .door{width:clamp(80px,22vw,170px);padding:10px 6px;background:#5b3a22;border:4px solid #2e1c10;box-shadow:inset 0 0 0 4px #8a5a35,0 5px 0 #2e1c10}
+  .door{width:clamp(85px,23vw,175px);padding:10px 6px;background:#5b3a22;border:4px solid #2e1c10;box-shadow:inset 0 0 0 4px #8a5a35,0 5px 0 #2e1c10}
   .door small{display:block;color:#d9c3a0;margin-top:8px;font-size:.8em}
   .lamp{width:clamp(44px,11vw,80px);height:clamp(44px,11vw,80px);opacity:.35;border:4px solid #000;padding:0}
   .lamp.on{opacity:1;filter:brightness(1.5);box-shadow:0 0 22px currentColor}
@@ -44,19 +44,33 @@
 
 <script>
 /* ============================================================
-   KAAVU: HALLOWEEN NIGHT  –  base code (single file, no libs)
-   Edit the LEVELS array below to rename bosses / heroes / theme.
+   KAAVU: HALLOWEEN NIGHT  –  Level 1: Sunny & Nagavalli
    ============================================================ */
 const W = 320, H = 180;
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 const panel = document.getElementById('panel'), helpBtn = document.getElementById('help');
 
-/* ---------- GAME DATA (customise me) ---------- */
+/* ---------- PRELOAD ASSETS ---------- */
+const IMGS = {};
+function loadGameImage(key, src){
+  const img = new Image();
+  img.src = src;
+  IMGS[key] = img;
+}
+loadGameImage("sunny", "assets/sunny.png");
+loadGameImage("nagavalli", "assets/nagavalli.png");
+
+/* ---------- GAME DATA ---------- */
 const LEVELS = [
   { name: "Tharavad of Whispers", sky: "#123a40", tree: "#8c2347",
-    hero: { name: "Kathanar Achan", robe: "#2b2b4a", glow: "#9cf" },
-    bosses: [ {name:"Yakshi", col:"#cfd8e8", f:"hair"}, {name:"Kuttichathan", col:"#7a3b8c", f:"horns"}, {name:"Maadan", col:"#8c5a2b", f:"fangs"} ] },
+    hero: { name: "Sunny", robe: "#b32626", glow: "#ffd700", img: "sunny" },
+    bosses: [
+      { name: "Nagavalli", col: "#e8c850", f: "hair", img: "nagavalli" },
+      { name: "Nagavalli", col: "#e8c850", f: "hair", img: "nagavalli" },
+      { name: "Nagavalli", col: "#e8c850", f: "hair", img: "nagavalli" }
+    ]
+  },
   { name: "Kaavu of Lanterns", sky: "#2a1740", tree: "#a33a5e",
     hero: { name: "Thantri", robe: "#d98a2b", glow: "#fc6" },
     bosses: [ {name:"Odiyan", col:"#3b3b3b", f:"horns"}, {name:"Neeli", col:"#2b5fa8", f:"hair"}, {name:"Karinkali", col:"#222", f:"fangs"} ] },
@@ -70,9 +84,17 @@ const LEVELS = [
     hero: { name: "Gurukkal", robe: "#6b3ab3", glow: "#c8f" },
     bosses: [ {name:"Kaala Yakshi", col:"#8c1f3a", f:"hair"}, {name:"Raktha Rakshas", col:"#b32626", f:"horns"}, {name:"Kaavu Muthashi", col:"#444a55", f:"hat"} ] },
 ];
-const DOOR_TYPES = ["math", "memory", "riddle"]; // door 1,2,3 => puzzle type
-const DOOR_HINT  = ["Number Puzzle", "Lamp Memory", "Kerala Riddle"];
+
+const PUZZLE_META = {
+  math:   { name: "Number Puzzle", icon: "🔢" },
+  memory: { name: "Lamp Memory",   icon: "💡" },
+  riddle: { name: "Kerala Riddle", icon: "📜" }
+};
+const ALL_PUZZLE_TYPES = ["math", "memory", "riddle"];
+
 const TRIVIA = [
+  ["In Manichitrathazhu, which spirit haunts the Thekkini?", ["Nagavalli","Kuttichathan","Karinkali"], 0],
+  ["Who played the iconic exorcist Dr. Sunny?", ["Mohanlal","Mammootty","Suresh Gopi"], 0],
   ["Onam sadya is served on which leaf?", ["Banana leaf","Teak leaf","Lotus leaf"], 0],
   ["Kathakali is a classical art of which state?", ["Kerala","Punjab","Assam"], 0],
   ["'Chakka' is the Malayalam word for which fruit?", ["Jackfruit","Mango","Papaya"], 0],
@@ -82,17 +104,31 @@ const TRIVIA = [
   ["Which coconut-oil-rich cuisine is Kerala known for?", ["Appam & stew","Pav bhaji","Dhokla"], 0],
   ["The giant Chinese fishing nets are in?", ["Fort Kochi","Jaipur","Hampi"], 0],
 ];
-const BOSS_TIME = 29;   // seconds before the boss reaches you
+const BOSS_TIME = 29;
 
 /* ---------- STATE ---------- */
-const G = { state:"title", lvl:0, lives:3, keys:0, px:20, door:0, timer:BOSS_TIME, phase:"wait", heroX:-30, zapT:0, t:0 };
+const G = {
+  state: "title",
+  lvl: 0,
+  lives: 3,
+  keys: 0,
+  px: 20,
+  door: 0,
+  doorPuzzles: ["math", "memory", "riddle"],
+  currentPuzzle: "math",
+  timer: BOSS_TIME,
+  phase: "wait",
+  heroX: -30,
+  zapT: 0,
+  t: 0
+};
 const keys = {};
 let lastTs = 0;
 
 /* ---------- HELPERS ---------- */
 const R = (x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
 const rnd = (a,b)=>a+Math.floor(Math.random()*(b-a+1));
-const shuffle = a=>{for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
+const shuffle = a=>{const copy=[...a];for(let i=copy.length-1;i>0;i--){const j=rnd(0,i);[copy[i],copy[j]]=[copy[j],copy[i]]}return copy};
 function txt(s,x,y,size,col,align){ctx.font=size+"px 'Press Start 2P',monospace";ctx.textAlign=align||"left";ctx.fillStyle="#000";ctx.fillText(s,x+1,y+1);ctx.fillStyle=col||"#fff";ctx.fillText(s,x,y)}
 function showPanel(html){panel.innerHTML=html;panel.style.display="flex"}
 function closePanel(){panel.style.display="none";panel.innerHTML=""}
@@ -109,40 +145,31 @@ function drawBackground(t){
   const th = theme();
   R(0,0,W,H,th.sky);
   R(0,70,W,60,"#00000022");
-  // far trees
   for(let i=0;i<9;i++){const x=i*38-6; R(x,70,8,80,"#0e2a30"); R(x-6,82,20,4,"#0e2a30"); R(x+2,60,4,16,"#0e2a30")}
-  // floating leaves
   for(let i=0;i<16;i++){const x=(i*29+t*8)%W, y=24+Math.sin(t*1.3+i)*8+i%4*7; R(x,y,3,3,"#6fb04a")}
   drawTree(14,th.tree); drawTree(84,th.tree);
-  // ground
   R(0,148,W,32,"#4a5a50");
   for(let i=0;i<W;i+=22){R(i,148,2,32,"#2c3a32");R(i+9,164,2,16,"#2c3a32")}
   R(0,148,W,2,"#6a8a58"); R(0,163,W,1,"#2c3a32");
-  for(let i=0;i<14;i++)R(i*24+5,150+(i%3)*10,6,2,"#4d7a3a"); // moss
+  for(let i=0;i<14;i++)R(i*24+5,150+(i%3)*10,6,2,"#4d7a3a");
 }
 function drawHouse(t,doorGlow){
-  // wall
   R(130,88,190,62,"#b79a74"); R(130,88,190,6,"#6b4a2b");
-  R(136,110,24,14,"#00000040"); R(250,96,22,18,"#00000030"); // peeling plaster
+  R(136,110,24,14,"#00000040"); R(250,96,22,18,"#00000030");
   R(132,88,6,62,"#5a3d22"); R(310,88,6,62,"#5a3d22");
-  // roof
   R(122,60,206,30,"#a8552f");
   for(let r=0;r<4;r++)for(let c=0;c<26;c++){R(122+c*8+(r%2)*4,62+r*7,7,5,(c+r)%3?"#8c4426":"#4d6e50")}
   R(122,86,206,4,"#5a2f18");
-  for(let i=0;i<30;i++)R(124+i*7,60+(i*13)%26,2,6,"#4a8a3a"); // creepers
-  // windows (boarded)
+  for(let i=0;i<30;i++)R(124+i*7,60+(i*13)%26,2,6,"#4a8a3a");
   R(140,100,28,24,"#05080a"); R(139,104,30,4,"#7a5532"); R(139,116,30,4,"#7a5532");
   R(256,100,26,24,"#05080a"); R(255,104,28,4,"#7a5532");
-  // glowing eyes in the middle window
   if(Math.sin(t*2)>-0.4){R(263,110,3,2,"#e8f0a0");R(273,110,3,2,"#e8f0a0")}
   R(286,100,24,24,"#05080a"); R(285,102,26,4,"#7a5532"); R(285,110,26,4,"#7a5532"); R(285,118,26,4,"#7a5532");
-  // ornate door
   R(190,98,38,52,"#4a2d18"); R(193,101,32,49,"#6b4426");
   R(208,101,2,49,"#1a0e06");
   for(let y=106;y<146;y+=8){R(197,y,9,5,"#8a5a35");R(212,y,9,5,"#8a5a35")}
   R(205,126,2,2,"#e0b050");R(211,126,2,2,"#e0b050");
   if(doorGlow){R(188,96,42,2,"#ffd37a");R(188,96,2,54,"#ffd37a")}
-  // lantern
   const fl = 1+Math.sin(t*9)*.15;
   ctx.fillStyle="rgba(255,190,80,.18)";ctx.beginPath();ctx.arc(120,112,24*fl,0,6.3);ctx.fill();
   ctx.fillStyle="rgba(255,190,80,.18)";ctx.beginPath();ctx.arc(120,112,15*fl,0,6.3);ctx.fill();
@@ -157,31 +184,72 @@ function drawFog(t){
 function drawPlayer(x,y,t,face){
   const bob = Math.round(Math.sin(t*8)*(G.moving?1.5:0.5));
   y+=bob;
-  R(x,y+4,14,14,"#1b2a6b");                 // body
-  R(x+2,y+11,10,6,"#b3264f");               // belly
-  R(x+1,y,12,8,"#1b2a6b");                  // head
+  R(x,y+4,14,14,"#1b2a6b");
+  R(x+2,y+11,10,6,"#b3264f");
+  R(x+1,y,12,8,"#1b2a6b");
   const ex = face>=0 ? x+7 : x+1;
-  R(ex,y+1,6,6,"#fff"); R(ex+(face>=0?3:0),y+3,3,3,"#000"); // big eye
+  R(ex,y+1,6,6,"#fff"); R(ex+(face>=0?3:0),y+3,3,3,"#000");
   R(x+1,y+17,5,3,"#1b2a6b"); R(x+8,y+17,5,3,"#1b2a6b");
 }
+
 function drawBoss(x,y,b,t,alpha){
   ctx.globalAlpha = alpha===undefined?1:alpha;
-  ctx.fillStyle="rgba(180,255,200,.12)";ctx.beginPath();ctx.arc(x+14,y+20,30,0,6.3);ctx.fill();
-  R(x,y+10,28,26,b.col); R(x+4,y,20,14,b.col);
-  for(let i=0;i<7;i++) R(x+i*4,y+36+((i+Math.floor(t*6))%2)*3,4,4,b.col);
-  R(x+8,y+6,4,4,"#ff3"); R(x+17,y+6,4,4,"#ff3"); R(x+9,y+7,2,2,"#000"); R(x+18,y+7,2,2,"#000");
-  if(b.f==="horns"){R(x+3,y-6,4,8,"#eee");R(x+21,y-6,4,8,"#eee")}
-  if(b.f==="hair"){R(x-4,y+2,6,36,"#111");R(x+26,y+2,6,36,"#111");R(x+4,y-3,20,4,"#111")}
-  if(b.f==="hat"){R(x+1,y-6,26,5,"#c9a96e");R(x+7,y-12,14,7,"#c9a96e")}
-  if(b.f==="fangs"){R(x+9,y+11,3,5,"#fff");R(x+17,y+11,3,5,"#fff")}
-  R(x+6,y+11,16,2,"#400"); 
+  
+  // Custom Nagavalli Image Sprite
+  if(b.img && IMGS[b.img] && IMGS[b.img].complete && IMGS[b.img].naturalWidth > 0){
+    const img = IMGS[b.img];
+    const sh = 52;
+    const sw = Math.round(sh * (img.naturalWidth / img.naturalHeight));
+    const floatY = Math.sin(t*3.4)*3;
+    const sy = 148 - sh + floatY;
+    
+    // Ghostly Yakshi aura
+    ctx.fillStyle = "rgba(255, 60, 60, 0.25)";
+    ctx.beginPath();
+    ctx.arc(x + sw/2, sy + sh/2, 30, 0, 6.3);
+    ctx.fill();
+    
+    // Zap shake effect
+    const shake = (G.phase === "zap") ? (Math.random() - 0.5) * 5 : 0;
+    ctx.drawImage(img, Math.round(x + shake), Math.round(sy), sw, sh);
+  } else {
+    // Procedural Fallback Sprite
+    ctx.fillStyle="rgba(180,255,200,.12)";ctx.beginPath();ctx.arc(x+14,y+20,30,0,6.3);ctx.fill();
+    R(x,y+10,28,26,b.col); R(x+4,y,20,14,b.col);
+    for(let i=0;i<7;i++) R(x+i*4,y+36+((i+Math.floor(t*6))%2)*3,4,4,b.col);
+    R(x+8,y+6,4,4,"#ff3"); R(x+17,y+6,4,4,"#ff3"); R(x+9,y+7,2,2,"#000"); R(x+18,y+7,2,2,"#000");
+    if(b.f==="horns"){R(x+3,y-6,4,8,"#eee");R(x+21,y-6,4,8,"#eee")}
+    if(b.f==="hair"){R(x-4,y+2,6,36,"#111");R(x+26,y+2,6,36,"#111");R(x+4,y-3,20,4,"#111")}
+    if(b.f==="hat"){R(x+1,y-6,26,5,"#c9a96e");R(x+7,y-12,14,7,"#c9a96e")}
+    if(b.f==="fangs"){R(x+9,y+11,3,5,"#fff");R(x+17,y+11,3,5,"#fff")}
+    R(x+6,y+11,16,2,"#400");
+  }
   ctx.globalAlpha=1;
 }
+
 function drawHero(x,y,h,t){
-  ctx.fillStyle=h.glow; ctx.globalAlpha=.25; ctx.beginPath();ctx.arc(x+10,y+20,26+Math.sin(t*10)*3,0,6.3);ctx.fill(); ctx.globalAlpha=1;
-  R(x+3,y,12,11,"#d9a066"); R(x+2,y-2,14,4,"#222");   // head + hair
-  R(x,y+11,18,26,h.robe); R(x+7,y+11,4,26,"#00000030"); // robe
-  R(x+22,y-4,3,42,"#caa56a"); R(x+19,y-9,9,9,h.glow);   // staff + orb
+  // Hero divine aura
+  ctx.fillStyle=h.glow;
+  ctx.globalAlpha=.28;
+  ctx.beginPath();
+  ctx.arc(x+18,y+22,28+Math.sin(t*8)*3,0,6.3);
+  ctx.fill();
+  ctx.globalAlpha=1;
+
+  // Custom Sunny Image Sprite
+  if(h.img && IMGS[h.img] && IMGS[h.img].complete && IMGS[h.img].naturalWidth > 0){
+    const img = IMGS[h.img];
+    const sh = 52;
+    const sw = Math.round(sh * (img.naturalWidth / img.naturalHeight));
+    const bob = G.phase==="hero" ? Math.sin(t*14)*2 : 0;
+    const sy = 148 - sh + bob;
+    ctx.drawImage(img, Math.round(x), Math.round(sy), sw, sh);
+  } else {
+    // Procedural Fallback Sprite
+    R(x+3,y,12,11,"#d9a066"); R(x+2,y-2,14,4,"#222");
+    R(x,y+11,18,26,h.robe); R(x+7,y+11,4,26,"#00000030");
+    R(x+22,y-4,3,42,"#caa56a"); R(x+19,y-9,9,9,h.glow);
+  }
 }
 
 /* ---------- HUD ---------- */
@@ -200,22 +268,39 @@ function drawWalk(){
   if(nearDoor()) txt("[E] / OPEN",G.px-10,122,7,"#ffd37a");
   txt(theme().name,W/2,172,7,"#cfe",'center');
 }
+
 function drawFight(){
   drawBackground(G.t); drawFog(G.t);
-  ctx.fillStyle="rgba(120,0,40,"+(0.18*(1-G.timer/BOSS_TIME))+")"; ctx.fillRect(0,0,W,H); // danger tint
+  ctx.fillStyle="rgba(120,0,40,"+(0.18*(1-G.timer/BOSS_TIME))+")"; ctx.fillRect(0,0,W,H);
   const boss = theme().bosses[G.door];
   const bx = 70 + 180*Math.max(0,G.timer/BOSS_TIME);
   const alpha = G.phase==="zap" ? Math.max(0,1-G.zapT/1.1) : 1;
   drawPlayer(24,130,G.t,1);
   drawBoss(bx, 108 + Math.sin(G.t*3)*3, boss, G.t, alpha);
-  txt(boss.name,bx+14,100,7,"#ff9db2",'center');
+  txt(boss.name,bx+18,92,7,"#ff9db2",'center');
+
   if(G.phase==="hero"||G.phase==="zap"){
     drawHero(G.heroX,112,theme().hero,G.t);
-    txt(theme().hero.name,G.heroX+10,104,7,theme().hero.glow,'center');
-    if(G.phase==="zap"){ ctx.fillStyle=theme().hero.glow; ctx.globalAlpha=Math.max(0,.9-G.zapT); ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
-      for(let i=0;i<8;i++){R(bx+rnd(0,28),120+rnd(-30,30),3,3,theme().hero.glow)} }
+    txt(theme().hero.name,G.heroX+18,92,7,theme().hero.glow,'center');
+    if(G.phase==="zap"){
+      ctx.fillStyle=theme().hero.glow;
+      ctx.globalAlpha=Math.max(0,.9-G.zapT);
+      ctx.fillRect(0,0,W,H);
+      ctx.globalAlpha=1;
+
+      // Golden exorcism beam from Sunny to Nagavalli
+      ctx.strokeStyle = "#ffd700";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(G.heroX + 32, 122);
+      ctx.lineTo(bx + 18, 122);
+      ctx.stroke();
+
+      for(let i=0;i<12;i++){R(bx+rnd(0,36),120+rnd(-24,24),3,3,theme().hero.glow)}
+    }
   }
 }
+
 function drawTitle(){
   drawBackground(G.t); drawHouse(G.t,false); drawFog(G.t); drawPlayer(60,130,G.t,1);
 }
@@ -230,7 +315,11 @@ function update(dt){
   }
   if(G.state==="fight"){
     if(G.phase==="wait"){ G.timer-=dt; if(G.timer<=0) caught(); }
-    else if(G.phase==="hero"){ G.heroX+=130*dt; const bx=70+180*Math.max(0,G.timer/BOSS_TIME); if(G.heroX>=bx-28){G.phase="zap";G.zapT=0} }
+    else if(G.phase==="hero"){
+      G.heroX+=130*dt;
+      const bx=70+180*Math.max(0,G.timer/BOSS_TIME);
+      if(G.heroX>=bx-32){G.phase="zap";G.zapT=0}
+    }
     else if(G.phase==="zap"){ G.zapT+=dt; if(G.zapT>1.3) bossDown(); }
   }
 }
@@ -246,31 +335,58 @@ function loop(ts){const dt=Math.min((ts-lastTs)/1000||0,.05);lastTs=ts;update(dt
 function showTitle(){
   G.state="title";
   showPanel(`<h1>KAAVU<br>HALLOWEEN NIGHT</h1>
-    <div>5 haunted levels. 15 spooky bosses.<br>Each level's boss only falls to its own hero.<br>Solve the puzzle to call for help!</div>
+    <div>5 haunted levels. 15 spooky encounters.<br>Summon <span style="color:#ffd700">Sunny</span> to banish <span style="color:#ff8fa8">Nagavalli</span>!<br>Solve the puzzle behind each door to call for help!</div>
     <div class="row"><button id="go">START</button></div>
     <div style="color:#8fb">← → move · E / Enter = open door</div>`);
   document.getElementById("go").onclick=()=>{G.lvl=0;G.lives=3;G.keys=0;startLevel()};
 }
+
 function startLevel(){
   G.state="walk";G.px=20;G.timer=BOSS_TIME;helpBtn.style.display="none";
   const L=theme();
+  const preview = L.hero.img ? `
+    <div style="display:flex;justify-content:center;gap:18px;align-items:center;margin:6px 0">
+      <div style="text-align:center"><img src="assets/${L.hero.img}.png" style="height:54px;image-rendering:pixelated;filter:drop-shadow(0 0 6px ${L.hero.glow})"><div style="font-size:8px;color:${L.hero.glow};margin-top:3px">${L.hero.name}</div></div>
+      <div style="font-size:11px;color:#ff8fa8">VS</div>
+      <div style="text-align:center"><img src="assets/nagavalli.png" style="height:54px;image-rendering:pixelated;filter:drop-shadow(0 0 6px #f44)"><div style="font-size:8px;color:#ff8fa8;margin-top:3px">Nagavalli</div></div>
+    </div>` : ``;
+
   showPanel(`<h2>LEVEL ${G.lvl+1}</h2><h1 style="font-size:clamp(12px,2.6vw,22px)">${L.name}</h1>
+    ${preview}
     <div>Your ally this level:<br><span style="color:${L.hero.glow}">${L.hero.name}</span></div>
     <div class="row"><button id="go">ENTER THE HOUSE</button></div>`);
   document.getElementById("go").onclick=closePanel;
 }
+
 function showDoors(){
-  showPanel(`<h2>CHOOSE A DOOR</h2><div>Something waits behind each one...</div>
-    <div class="row">${[0,1,2].map(i=>`<button class="door" data-i="${i}">🚪<br>DOOR ${i+1}<small>${DOOR_HINT[i]}</small></button>`).join("")}</div>`);
+  // Randomize puzzles for Door 1, Door 2, and Door 3 initially upon opening
+  G.doorPuzzles = shuffle(ALL_PUZZLE_TYPES);
+
+  showPanel(`<h2>CHOOSE A DOOR</h2><div>Each door holds a random challenge...</div>
+    <div class="row">${[0,1,2].map(i=>`
+      <button class="door" data-i="${i}">
+        🚪<br>DOOR ${i+1}
+        <small>${PUZZLE_META[G.doorPuzzles[i]].icon} ${PUZZLE_META[G.doorPuzzles[i]].name}</small>
+      </button>`).join("")}
+    </div>`);
   panel.querySelectorAll(".door").forEach(b=>b.onclick=()=>enterDoor(+b.dataset.i));
 }
+
 function enterDoor(i){
-  G.door=i;G.state="fight";G.phase="wait";G.timer=BOSS_TIME;G.heroX=-30;
+  G.door=i;
+  // Use randomized puzzle type for this door
+  G.currentPuzzle = G.doorPuzzles ? G.doorPuzzles[i] : ALL_PUZZLE_TYPES[i];
+  G.state="fight";G.phase="wait";G.timer=BOSS_TIME;G.heroX=-30;
   const boss=theme().bosses[i];
-  showPanel(`<h2>${boss.name.toUpperCase()} APPEARS!</h2><div>It is closing in... you have ${BOSS_TIME} seconds.<br>Press CALL FOR HELP and solve the puzzle<br>to summon <span style="color:${theme().hero.glow}">${theme().hero.name}</span>.</div>
+  const bossImg = boss.img ? `<div style="margin:4px 0"><img src="assets/${boss.img}.png" style="height:54px;image-rendering:pixelated;filter:drop-shadow(0 0 8px #f33)"></div>` : ``;
+
+  showPanel(`<h2>${boss.name.toUpperCase()} APPEARS!</h2>
+    ${bossImg}
+    <div>It is closing in... you have ${BOSS_TIME} seconds.<br>Press CALL FOR HELP and solve the puzzle<br>to summon <span style="color:${theme().hero.glow}">${theme().hero.name}</span>.</div>
     <div class="row"><button id="go">FACE IT</button></div>`);
   document.getElementById("go").onclick=()=>{closePanel();helpBtn.style.display="block"};
 }
+
 function caught(){
   G.lives--;helpBtn.style.display="none";
   if(G.lives<=0){ G.state="over";
@@ -280,10 +396,11 @@ function caught(){
   showPanel(`<h2>CAUGHT!</h2><div>Lives left: ${"♥".repeat(G.lives)}</div><div class="row"><button id="go">BACK TO THE DOORS</button></div>`);
   document.getElementById("go").onclick=()=>{closePanel();G.px=190;showDoors()};
 }
+
 function bossDown(){
   G.keys++;G.lvl++;G.state="walk";G.phase="wait";helpBtn.style.display="none";
   if(G.lvl>=LEVELS.length){
-    showPanel(`<h1>YOU WIN!</h1><div>All 5 bosses banished.<br>Dawn breaks over the kaavu. Happy Halloween!</div><div class="row"><button id="go">PLAY AGAIN</button></div>`);
+    showPanel(`<h1>YOU WIN!</h1><div>All spirits banished.<br>Dawn breaks over the kaavu. Happy Halloween!</div><div class="row"><button id="go">PLAY AGAIN</button></div>`);
     document.getElementById("go").onclick=showTitle; return; }
   showPanel(`<h2>KEY COLLECTED!</h2><div>${G.keys} / 5 keys</div><div class="row"><button id="go">NEXT LEVEL</button></div>`);
   document.getElementById("go").onclick=startLevel;
@@ -293,13 +410,15 @@ function bossDown(){
 helpBtn.onclick=()=>{ if(G.state!=="fight"||G.phase!=="wait")return; openPuzzle() };
 function solved(){ closePanel(); helpBtn.style.display="none"; G.phase="hero"; G.heroX=-30 }
 function wrong(){ G.timer=Math.max(1,G.timer-4); const m=document.getElementById("msg"); if(m)m.textContent="WRONG! -4 seconds" }
+
 function openPuzzle(){
-  const type=DOOR_TYPES[G.door];
-  showPanel(`<h2>SOLVE TO SUMMON HELP</h2><div id="q"></div><div class="row" id="opts"></div><div id="msg"></div>
+  const type = G.currentPuzzle || (G.doorPuzzles && G.doorPuzzles[G.door]) || ALL_PUZZLE_TYPES[G.door];
+  showPanel(`<h2>SOLVE TO SUMMON ${theme().hero.name.toUpperCase()}</h2><div id="q"></div><div class="row" id="opts"></div><div id="msg"></div>
     <div class="row"><button id="close" class="alt">BACK</button></div>`);
-  document.getElementById("close").onclick=closePanel;   // timer keeps running!
+  document.getElementById("close").onclick=closePanel;
   if(type==="math") mathPuzzle(); else if(type==="memory") memoryPuzzle(); else riddlePuzzle();
 }
+
 function optionsUI(list,correctIdx){
   const o=document.getElementById("opts");
   list.forEach((label,i)=>{const b=document.createElement("button");b.className="opt";b.textContent=label;b.onclick=()=>i===correctIdx?solved():wrong();o.appendChild(b)});
