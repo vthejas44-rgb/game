@@ -23,8 +23,7 @@
   button:active{transform:translateY(3px);box-shadow:0 1px 0 #0b3a3d}
   button.alt{background:var(--red);border-color:#5e1128;box-shadow:0 4px 0 #5e1128}
   .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-  .door{width:clamp(85px,23vw,175px);padding:10px 6px;background:#5b3a22;border:4px solid #2e1c10;box-shadow:inset 0 0 0 4px #8a5a35,0 5px 0 #2e1c10}
-  .door small{display:block;color:#d9c3a0;margin-top:8px;font-size:.8em}
+  .door{width:clamp(85px,23vw,175px);padding:18px 8px;background:#5b3a22;border:4px solid #2e1c10;box-shadow:inset 0 0 0 4px #8a5a35,0 5px 0 #2e1c10;font-size:clamp(9px,1.6vw,14px);line-height:1.6}
   .lamp{width:clamp(44px,11vw,80px);height:clamp(44px,11vw,80px);opacity:.35;border:4px solid #000;padding:0}
   .lamp.on{opacity:1;filter:brightness(1.5);box-shadow:0 0 22px currentColor}
   .opt{min-width:120px}
@@ -48,7 +47,7 @@
 
 <script>
 /* ============================================================
-   KAAVU: HALLOWEEN NIGHT
+   KAAVU: HALLOWEEN NIGHT (3 LEVELS)
    L1: Madampalli Mana (Sunny & Nagavalli)
    L2: Koduman Mana (Thevan & Koduman Potti)
    L3: Abandoned House (Arun & Christopher)
@@ -196,7 +195,7 @@ loadGameImage("thevan", "assets/thevan.png");
 loadGameImage("christopher", "assets/christopher.png");
 loadGameImage("arun", "assets/arun.png");
 
-/* ---------- GAME DATA ---------- */
+/* ---------- GAME DATA (3 LEVELS) ---------- */
 const LEVELS = [
   { 
     name: "Madampalli Mana", 
@@ -230,28 +229,9 @@ const LEVELS = [
       { name: "Christopher", col: "#222222", f: "hat", img: "christopher" },
       { name: "Christopher", col: "#222222", f: "hat", img: "christopher" }
     ]
-  },
-  { 
-    name: "Crossroads at Midnight", 
-    sky: "#10304a", 
-    tree: "#7a2f5a",
-    hero: { name: "Mantravadi", robe: "#1f7a4a", glow: "#6f9" },
-    bosses: [ {name:"Pretham", col:"#9aa89a", f:"hat"}, {name:"Pisachu", col:"#5a7a3b", f:"horns"}, {name:"Brahmarakshas", col:"#a8742b", f:"fangs"} ] 
-  },
-  { 
-    name: "The Last Kaavu", 
-    sky: "#1d1d33", 
-    tree: "#c23a6a",
-    hero: { name: "Gurukkal", robe: "#6b3ab3", glow: "#c8f" },
-    bosses: [ {name:"Kaala Yakshi", col:"#8c1f3a", f:"hair"}, {name:"Raktha Rakshas", col:"#b32626", f:"horns"}, {name:"Kaavu Muthashi", col:"#444a55", f:"hat"} ] 
-  },
+  }
 ];
 
-const PUZZLE_META = {
-  math:   { name: "Number Puzzle", icon: "🔢" },
-  memory: { name: "Lamp Memory",   icon: "💡" },
-  riddle: { name: "Kerala Riddle", icon: "📜" }
-};
 const ALL_PUZZLE_TYPES = ["math", "memory", "riddle"];
 
 const TRIVIA = [
@@ -421,7 +401,7 @@ function drawHUD(){
   txt(String(Math.max(0,Math.ceil(G.timer))).padStart(2,"0"),6,28,22,"#fff");
   for(let i=0;i<G.keys;i++) drawKeyIcon(8+i*14,36);
   for(let i=0;i<3;i++) txt("♥",W-18-i*14,16,12,i<G.lives?"#ff4a6e":"#444");
-  txt("LVL "+(G.lvl+1)+"/5",W-6,32,7,"#f2b84b","right");
+  txt("LVL "+(G.lvl+1)+"/3",W-6,32,7,"#f2b84b","right");
 }
 
 /* ---------- SCENES ---------- */
@@ -440,7 +420,7 @@ function drawFight(){
   
   // Base boss X position
   const baseX = 70 + 180*Math.max(0,G.timer/BOSS_TIME);
-  // When zapped, boss gets defeated and retreats backwards off the screen to the right!
+  // When zapped, boss retreats backwards off screen to the right
   const retreatX = (G.phase === "zap") ? (G.zapT * 115) : 0;
   const currentBx = baseX + retreatX;
   const alpha = G.phase==="zap" ? Math.max(0,1-G.zapT/2.2) : 1;
@@ -462,7 +442,7 @@ function drawFight(){
       ctx.fillRect(0,0,W,H);
       ctx.globalAlpha = 1;
 
-      // Unique weapon / energy beam per hero!
+      // Unique weapon / energy beam per hero
       if(G.lvl === 0){
         // Sunny: Golden Exorcism Holy Beam
         ctx.strokeStyle = "#ffd700";
@@ -486,7 +466,6 @@ function drawFight(){
         for(let i=0;i<14;i++){ R(currentBx + rnd(-5,35), 118 + rnd(-28,28), 3, 3, (i%2) ? "#4ade80" : "#fbbf24"); }
       } else if(G.lvl === 2){
         // Arun: Gunshot Muzzle Flash & High-velocity bullet tracer
-        // Muzzle flash
         if(G.zapT < 0.4 || (G.zapT > 0.8 && G.zapT < 1.1)){
           ctx.fillStyle = "#fff";
           ctx.beginPath();
@@ -497,7 +476,6 @@ function drawFight(){
           ctx.arc(G.heroX + 36, 118, 5, 0, 6.3);
           ctx.fill();
         }
-        // Bullet tracer line
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -505,14 +483,6 @@ function drawFight(){
         ctx.lineTo(currentBx + 18, 118);
         ctx.stroke();
         for(let i=0;i<16;i++){ R(currentBx + rnd(-8,30), 116 + rnd(-20,20), 2, 2, (i%2) ? "#fbbf24" : "#fff"); }
-      } else {
-        // Fallback energy
-        ctx.strokeStyle = hero.glow;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(G.heroX + 28, 122);
-        ctx.lineTo(currentBx + 18, 122);
-        ctx.stroke();
       }
 
       // Shouting speech bubble above Hero
@@ -531,7 +501,6 @@ function drawFight(){
       ctx.fill();
       ctx.stroke();
 
-      // Bubble pointer down to hero
       ctx.beginPath();
       ctx.moveTo(bubbleX - 6, bubbleY + 6);
       ctx.lineTo(bubbleX, bubbleY + 14);
@@ -540,7 +509,6 @@ function drawFight(){
       ctx.fill();
       ctx.stroke();
 
-      // Bold shouting text
       ctx.font = "bold 8px 'Press Start 2P', monospace";
       ctx.textAlign = "center";
       ctx.fillStyle = "#b3264f";
@@ -591,7 +559,7 @@ function loop(ts){const dt=Math.min((ts-lastTs)/1000||0,.05);lastTs=ts;update(dt
 function showTitle(){
   G.state="title";
   showPanel(`<h1>KAAVU<br>HALLOWEEN NIGHT</h1>
-    <div>5 haunted levels. Iconic battles.<br>
+    <div>3 haunted levels. 3 iconic battles.<br>
     L1: <span style="color:#ffd700">Sunny</span> vs <span style="color:#ff8fa8">Nagavalli</span><br>
     L2: <span style="color:#4ade80">Thevan</span> vs <span style="color:#fbbf24">Koduman Potti</span><br>
     L3: <span style="color:#60a5fa">Arun</span> vs <span style="color:#e5e7eb">Christopher</span></div>
@@ -632,14 +600,13 @@ function startLevel(){
 }
 
 function showDoors(){
-  // Randomize Door 1, Door 2, and Door 3 puzzle types initially upon opening
+  // Randomize puzzle types secretly behind doors (user does not see puzzle names)
   G.doorPuzzles = shuffle(ALL_PUZZLE_TYPES);
 
-  showPanel(`<h2>CHOOSE A DOOR</h2><div>Each door holds a random challenge...</div>
+  showPanel(`<h2>CHOOSE A DOOR</h2><div>Something lurks behind each door...</div>
     <div class="row">${[0,1,2].map(i=>`
       <button class="door" data-i="${i}">
         🚪<br>DOOR ${i+1}
-        <small>${PUZZLE_META[G.doorPuzzles[i]].icon} ${PUZZLE_META[G.doorPuzzles[i]].name}</small>
       </button>`).join("")}
     </div>`);
   panel.querySelectorAll(".door").forEach(b=>b.onclick=()=>enterDoor(+b.dataset.i));
@@ -647,7 +614,7 @@ function showDoors(){
 
 function enterDoor(i){
   G.door=i;
-  // Use randomized puzzle for this specific door
+  // Mystery puzzle assigned to this door
   G.currentPuzzle = G.doorPuzzles ? G.doorPuzzles[i] : ALL_PUZZLE_TYPES[i];
   G.state="fight";G.phase="wait";G.timer=BOSS_TIME;G.heroX=-30;
   const boss=theme().bosses[i];
@@ -673,10 +640,12 @@ function caught(){
 function bossDown(){
   const defeatedBoss = theme().bosses[G.door].name;
   G.keys++;G.lvl++;G.state="walk";G.phase="wait";helpBtn.style.display="none";
-  if(G.lvl>=LEVELS.length){
-    showPanel(`<h1>YOU WIN!</h1><div>All spirits and villains banished.<br>Dawn breaks over the kaavu. Happy Halloween!</div><div class="row"><button id="go">PLAY AGAIN</button></div>`);
-    document.getElementById("go").onclick=showTitle; return; }
-  showPanel(`<h2>${defeatedBoss.toUpperCase()} DEFEATED!</h2><div>Key collected (${G.keys} / 5 keys)</div><div class="row"><button id="go">NEXT LEVEL</button></div>`);
+  
+  if(G.lvl >= LEVELS.length){
+    showPanel(`<h1>YOU ESCAPED!</h1><div>You have escaped the mana.<br>Dawn breaks and the curse has ended!</div><div class="row"><button id="go">PLAY AGAIN</button></div>`);
+    document.getElementById("go").onclick=showTitle; return;
+  }
+  showPanel(`<h2>${defeatedBoss.toUpperCase()} DEFEATED!</h2><div>Key collected (${G.keys} / 3 keys)</div><div class="row"><button id="go">NEXT LEVEL</button></div>`);
   document.getElementById("go").onclick=startLevel;
 }
 
