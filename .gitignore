@@ -1,1 +1,2 @@
-WhatsApp*.mpeg
+*.mpeg
+!assets/*.mpeg

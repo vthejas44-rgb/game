@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kaavu: Madampalli Mana - Halloween Night</title>
+<title>Kaavu: Haunted Mansions - Halloween Night</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#0b1d21;--ink:#e9f3ee;--gold:#f2b84b;--red:#b3264f;--teal:#1f6f73}
@@ -15,7 +15,7 @@
     padding:6px 10px;font-size:9px;cursor:pointer;z-index:20;display:flex;align-items:center;gap:4px}
   #soundBtn:hover{background:var(--red);color:#fff}
   #panel{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;
-    background:rgba(5,15,18,.88);text-align:center;padding:14px;gap:12px;font-size:clamp(8px,1.6vw,13px);line-height:1.7}
+    background:rgba(5,15,18,.90);text-align:center;padding:14px;gap:12px;font-size:clamp(8px,1.6vw,13px);line-height:1.7}
   #panel h1{font-size:clamp(14px,3.4vw,28px);margin:0;color:var(--gold);text-shadow:3px 3px 0 var(--red)}
   #panel h2{font-size:clamp(11px,2.2vw,18px);margin:0;color:var(--gold)}
   button{font-family:inherit;font-size:clamp(8px,1.5vw,12px);color:var(--ink);background:var(--teal);border:3px solid #0b3a3d;
@@ -48,19 +48,28 @@
 
 <script>
 /* ============================================================
-   KAAVU: HALLOWEEN NIGHT  –  Madampalli Mana (Sunny & Nagavalli)
+   KAAVU: HALLOWEEN NIGHT
+   L1: Madampalli Mana (Sunny & Nagavalli)
+   L2: Koduman Mana (Thevan & Koduman Potti)
+   L3: Abandoned House (Arun & Christopher)
    ============================================================ */
 const W = 320, H = 180;
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 const panel = document.getElementById('panel'), helpBtn = document.getElementById('help'), soundBtn = document.getElementById('soundBtn');
 
-/* ---------- AUDIO: SHOUT & HORROR MUSIC ENGINE ---------- */
+/* ---------- AUDIO ENGINE ---------- */
 let audioEnabled = true;
-const shoutAudio = new Audio('assets/sunny_shout.mp3');
-shoutAudio.preload = 'auto';
+const AUDIOS = {
+  sunny: new Audio('assets/sunny_shout.mp3'),
+  kodu:  new Audio('assets/kodu.mp3'),
+  gun:   new Audio('assets/gun.mp3')
+};
+for(const k in AUDIOS) {
+  AUDIOS[k].preload = 'auto';
+}
 
-// Web Audio API Horror Music Synthesizer
+// Horror Synthesizer (Web Audio API)
 let audioCtx = null;
 let musicInterval = null;
 let droneOsc1 = null, droneOsc2 = null, droneGain = null;
@@ -79,9 +88,8 @@ function initAudio(){
 function startHorrorMusic(){
   if(!audioCtx || !audioEnabled) return;
   if(audioCtx.state === 'suspended') audioCtx.resume();
-  if(droneOsc1) return; // already playing
+  if(droneOsc1) return;
 
-  // 1. Deep Sub-Bass Horror Drone
   const masterMusicGain = audioCtx.createGain();
   masterMusicGain.gain.setValueAtTime(0.22, audioCtx.currentTime);
   masterMusicGain.connect(audioCtx.destination);
@@ -94,33 +102,27 @@ function startHorrorMusic(){
 
   droneOsc1 = audioCtx.createOscillator();
   droneOsc1.type = "sawtooth";
-  droneOsc1.frequency.setValueAtTime(55, audioCtx.currentTime); // low A1 note
+  droneOsc1.frequency.setValueAtTime(55, audioCtx.currentTime);
   droneOsc1.connect(filter);
   droneOsc1.start();
 
   droneOsc2 = audioCtx.createOscillator();
   droneOsc2.type = "triangle";
-  droneOsc2.frequency.setValueAtTime(57.5, audioCtx.currentTime); // eerie binaural detune
+  droneOsc2.frequency.setValueAtTime(57.5, audioCtx.currentTime);
   droneOsc2.connect(filter);
   droneOsc2.start();
 
-  // 2. Haunting horror notes (diminished / harmonic minor bell tones)
-  const horrorNotes = [
-    523.25, 554.37, 659.25, 698.46, 783.99, 830.61, 987.77, 1046.50
-  ];
+  const horrorNotes = [523.25, 554.37, 659.25, 698.46, 783.99, 830.61, 987.77, 1046.50];
   let noteStep = 0;
   musicInterval = setInterval(()=>{
     if(!audioEnabled || !audioCtx || G.state === "over") return;
     const isFight = (G.state === "fight");
     
-    // Play eerie glass bell tone
     if(Math.random() > (isFight ? 0.15 : 0.35)){
       const freq = horrorNotes[noteStep % horrorNotes.length];
       playHorrorBell(freq, isFight ? 0.14 : 0.08);
       noteStep = (noteStep + (Math.random() > 0.4 ? 1 : 2)) % horrorNotes.length;
     }
-
-    // Creepy heartbeat thud
     playHeartbeat(isFight);
   }, 450);
 }
@@ -131,10 +133,8 @@ function playHorrorBell(freq, vol){
   const gain = audioCtx.createGain();
   osc.type = "sine";
   osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-  
   gain.gain.setValueAtTime(vol, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
-
   osc.connect(gain);
   gain.connect(audioCtx.destination);
   osc.start();
@@ -148,22 +148,26 @@ function playHeartbeat(isFight){
   osc.type = "triangle";
   osc.frequency.setValueAtTime(isFight ? 75 : 55, audioCtx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.18);
-
   const vol = isFight ? 0.35 : 0.16;
   gain.gain.setValueAtTime(vol, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
-
   osc.connect(gain);
   gain.connect(audioCtx.destination);
   osc.start();
   osc.stop(audioCtx.currentTime + 0.25);
 }
 
-function playSunnyShout(){
+function playDefeatAudio(lvl){
   if(!audioEnabled) return;
   try {
-    shoutAudio.currentTime = 0;
-    shoutAudio.play().catch(e => console.log("Shout play failed:", e));
+    let aud = null;
+    if(lvl === 0) aud = AUDIOS.sunny;
+    else if(lvl === 1) aud = AUDIOS.kodu;
+    else if(lvl === 2) aud = AUDIOS.gun;
+    if(aud){
+      aud.currentTime = 0;
+      aud.play().catch(e => console.log("Audio play failed:", e));
+    }
   } catch(e){}
 }
 
@@ -171,7 +175,7 @@ soundBtn.onclick = ()=>{
   audioEnabled = !audioEnabled;
   soundBtn.textContent = audioEnabled ? "🔊 AUDIO: ON" : "🔇 AUDIO: MUTED";
   if(!audioEnabled){
-    if(droneGain) droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    if(droneGain && audioCtx) droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
   } else {
     initAudio();
     if(droneGain && audioCtx) droneGain.gain.setValueAtTime(0.22, audioCtx.currentTime);
@@ -187,29 +191,60 @@ function loadGameImage(key, src){
 }
 loadGameImage("sunny", "assets/sunny.png");
 loadGameImage("nagavalli", "assets/nagavalli.png");
+loadGameImage("koduman_potti", "assets/koduman_potti.png");
+loadGameImage("thevan", "assets/thevan.png");
+loadGameImage("christopher", "assets/christopher.png");
+loadGameImage("arun", "assets/arun.png");
 
 /* ---------- GAME DATA ---------- */
 const LEVELS = [
-  { name: "Madampalli Mana", sky: "#123a40", tree: "#8c2347",
-    hero: { name: "Sunny", robe: "#b32626", glow: "#ffd700", img: "sunny" },
+  { 
+    name: "Madampalli Mana", 
+    sky: "#123a40", 
+    tree: "#8c2347",
+    hero: { name: "Sunny", robe: "#b32626", glow: "#ffd700", img: "sunny", shout: "GANGEEE!" },
     bosses: [
       { name: "Nagavalli", col: "#e8c850", f: "hair", img: "nagavalli" },
       { name: "Nagavalli", col: "#e8c850", f: "hair", img: "nagavalli" },
       { name: "Nagavalli", col: "#e8c850", f: "hair", img: "nagavalli" }
     ]
   },
-  { name: "Kaavu of Lanterns", sky: "#2a1740", tree: "#a33a5e",
-    hero: { name: "Thantri", robe: "#d98a2b", glow: "#fc6" },
-    bosses: [ {name:"Odiyan", col:"#3b3b3b", f:"horns"}, {name:"Neeli", col:"#2b5fa8", f:"hair"}, {name:"Karinkali", col:"#222", f:"fangs"} ] },
-  { name: "Pond of Echoes", sky: "#3a1a1a", tree: "#b33a3a",
-    hero: { name: "Velichappadu", robe: "#c2282d", glow: "#f66" },
-    bosses: [ {name:"Marutha", col:"#6b4a2b", f:"hat"}, {name:"Chudala", col:"#d9d9d9", f:"hair"}, {name:"Mohini", col:"#c46bd1", f:"fangs"} ] },
-  { name: "Crossroads at Midnight", sky: "#10304a", tree: "#7a2f5a",
+  { 
+    name: "Koduman Mana", 
+    sky: "#181424", 
+    tree: "#5c2a45",
+    hero: { name: "Thevan", robe: "#e3dfd3", glow: "#4ade80", img: "thevan", shout: "POTTI...!!" },
+    bosses: [
+      { name: "Koduman Potti", col: "#c88a4b", f: "horns", img: "koduman_potti" },
+      { name: "Koduman Potti", col: "#c88a4b", f: "horns", img: "koduman_potti" },
+      { name: "Koduman Potti", col: "#c88a4b", f: "horns", img: "koduman_potti" }
+    ]
+  },
+  { 
+    name: "Abandoned House", 
+    sky: "#191a24", 
+    tree: "#3c4858",
+    hero: { name: "Arun", robe: "#c29b68", glow: "#60a5fa", img: "arun", shout: "FREEZE, CHRISTOPHER!" },
+    bosses: [
+      { name: "Christopher", col: "#222222", f: "hat", img: "christopher" },
+      { name: "Christopher", col: "#222222", f: "hat", img: "christopher" },
+      { name: "Christopher", col: "#222222", f: "hat", img: "christopher" }
+    ]
+  },
+  { 
+    name: "Crossroads at Midnight", 
+    sky: "#10304a", 
+    tree: "#7a2f5a",
     hero: { name: "Mantravadi", robe: "#1f7a4a", glow: "#6f9" },
-    bosses: [ {name:"Pretham", col:"#9aa89a", f:"hat"}, {name:"Pisachu", col:"#5a7a3b", f:"horns"}, {name:"Brahmarakshas", col:"#a8742b", f:"fangs"} ] },
-  { name: "The Last Kaavu", sky: "#1d1d33", tree: "#c23a6a",
+    bosses: [ {name:"Pretham", col:"#9aa89a", f:"hat"}, {name:"Pisachu", col:"#5a7a3b", f:"horns"}, {name:"Brahmarakshas", col:"#a8742b", f:"fangs"} ] 
+  },
+  { 
+    name: "The Last Kaavu", 
+    sky: "#1d1d33", 
+    tree: "#c23a6a",
     hero: { name: "Gurukkal", robe: "#6b3ab3", glow: "#c8f" },
-    bosses: [ {name:"Kaala Yakshi", col:"#8c1f3a", f:"hair"}, {name:"Raktha Rakshas", col:"#b32626", f:"horns"}, {name:"Kaavu Muthashi", col:"#444a55", f:"hat"} ] },
+    bosses: [ {name:"Kaala Yakshi", col:"#8c1f3a", f:"hair"}, {name:"Raktha Rakshas", col:"#b32626", f:"horns"}, {name:"Kaavu Muthashi", col:"#444a55", f:"hat"} ] 
+  },
 ];
 
 const PUZZLE_META = {
@@ -222,14 +257,16 @@ const ALL_PUZZLE_TYPES = ["math", "memory", "riddle"];
 const TRIVIA = [
   ["In Manichitrathazhu, which spirit haunts the Thekkini?", ["Nagavalli","Kuttichathan","Karinkali"], 0],
   ["Who played the iconic exorcist Dr. Sunny?", ["Mohanlal","Mammootty","Suresh Gopi"], 0],
-  ["What is the ancestral palace called in Manichitrathazhu?", ["Madampalli Mana","Varikkasseri","Arakkal"], 0],
-  ["Onam sadya is served on which leaf?", ["Banana leaf","Teak leaf","Lotus leaf"], 0],
-  ["Kathakali is a classical art of which state?", ["Kerala","Punjab","Assam"], 0],
+  ["In Bramayugam, who plays the sinister Koduman Potti?", ["Mammootty","Mohanlal","Kamal Haasan"], 0],
+  ["In Bramayugam, what is Thevan's traditional identity?", ["Paanan singer","Royal guard","Astrologer"], 0],
+  ["In Ratsasan, which psycho killer wears a magician hat?", ["Christopher","Mary","Inba"], 0],
+  ["In Ratsasan, which officer pursues Christopher?", ["Arun Kumar","Raghavan","Sethupathi"], 0],
+  ["What is the ancestral mansion in Manichitrathazhu called?", ["Madampalli Mana","Varikkasseri","Arakkal"], 0],
+  ["Onam sadya is traditionally served on which leaf?", ["Banana leaf","Teak leaf","Lotus leaf"], 0],
+  ["Kathakali is a classical art originating from?", ["Kerala","Punjab","Assam"], 0],
   ["'Chakka' is the Malayalam word for which fruit?", ["Jackfruit","Mango","Papaya"], 0],
   ["Capital city of Kerala?", ["Thiruvananthapuram","Kochi","Kozhikode"], 0],
-  ["Vallam Kali is a famous ___ race.", ["Boat","Bull","Horse"], 0],
-  ["Pookkalam is made during which festival?", ["Onam","Holi","Pongal"], 0],
-  ["Which coconut-oil-rich cuisine is Kerala known for?", ["Appam & stew","Pav bhaji","Dhokla"], 0],
+  ["Vallam Kali is a famous ___ boat race.", ["Snake","Dragon","Speed"], 0],
 ];
 const BOSS_TIME = 29;
 
@@ -322,21 +359,21 @@ function drawPlayer(x,y,t,face){
 function drawBoss(x,y,b,t,alpha){
   ctx.globalAlpha = alpha===undefined?1:alpha;
   
-  // Custom Nagavalli Image Sprite
   if(b.img && IMGS[b.img] && IMGS[b.img].complete && IMGS[b.img].naturalWidth > 0){
     const img = IMGS[b.img];
     const sh = 52;
     const sw = Math.round(sh * (img.naturalWidth / img.naturalHeight));
-    const floatY = Math.sin(t*3.4)*3;
+    const floatY = (G.lvl === 0) ? Math.sin(t*3.4)*3 : 0;
     const sy = 148 - sh + floatY;
     
-    // Ghostly Yakshi aura
-    ctx.fillStyle = (G.phase === "zap") ? "rgba(255, 120, 40, 0.4)" : "rgba(255, 60, 60, 0.25)";
+    // Boss Threat Aura
+    const auraCol = (G.lvl === 0) ? "rgba(255, 60, 60, 0.28)" : (G.lvl === 1 ? "rgba(180, 110, 40, 0.28)" : "rgba(30, 30, 30, 0.4)");
+    ctx.fillStyle = auraCol;
     ctx.beginPath();
-    ctx.arc(x + sw/2, sy + sh/2, 30, 0, 6.3);
+    ctx.arc(x + sw/2, sy + sh/2, 28, 0, 6.3);
     ctx.fill();
     
-    // Zap defeat shake & spin
+    // Zap defeat shake & recoil
     const shake = (G.phase === "zap") ? (Math.random() - 0.5) * 6 : 0;
     ctx.drawImage(img, Math.round(x + shake), Math.round(sy), sw, sh);
   } else {
@@ -357,13 +394,12 @@ function drawBoss(x,y,b,t,alpha){
 function drawHero(x,y,h,t){
   // Hero divine aura
   ctx.fillStyle=h.glow;
-  ctx.globalAlpha=.28;
+  ctx.globalAlpha=.30;
   ctx.beginPath();
   ctx.arc(x+18,y+22,28+Math.sin(t*8)*3,0,6.3);
   ctx.fill();
   ctx.globalAlpha=1;
 
-  // Custom Sunny Image Sprite
   if(h.img && IMGS[h.img] && IMGS[h.img].complete && IMGS[h.img].naturalWidth > 0){
     const img = IMGS[h.img];
     const sh = 52;
@@ -400,13 +436,14 @@ function drawFight(){
   drawBackground(G.t); drawFog(G.t);
   ctx.fillStyle="rgba(120,0,40,"+(0.18*(1-G.timer/BOSS_TIME))+")"; ctx.fillRect(0,0,W,H);
   const boss = theme().bosses[G.door];
+  const hero = theme().hero;
   
   // Base boss X position
   const baseX = 70 + 180*Math.max(0,G.timer/BOSS_TIME);
-  // When zapped, Nagavalli gets defeated and retreats backwards off the screen to the right!
-  const retreatX = (G.phase === "zap") ? (G.zapT * 110) : 0;
+  // When zapped, boss gets defeated and retreats backwards off the screen to the right!
+  const retreatX = (G.phase === "zap") ? (G.zapT * 115) : 0;
   const currentBx = baseX + retreatX;
-  const alpha = G.phase==="zap" ? Math.max(0,1-G.zapT/1.8) : 1;
+  const alpha = G.phase==="zap" ? Math.max(0,1-G.zapT/2.2) : 1;
 
   drawPlayer(24,130,G.t,1);
   drawBoss(currentBx, 108 + Math.sin(G.t*3)*3, boss, G.t, alpha);
@@ -415,45 +452,86 @@ function drawFight(){
   }
 
   if(G.phase==="hero"||G.phase==="zap"){
-    drawHero(G.heroX,112,theme().hero,G.t);
-    txt(theme().hero.name,G.heroX+18,92,7,theme().hero.glow,'center');
+    drawHero(G.heroX,112,hero,G.t);
+    txt(hero.name,G.heroX+18,92,7,hero.glow,'center');
 
     if(G.phase==="zap"){
-      // Screen Exorcism Flash
-      ctx.fillStyle = theme().hero.glow;
-      ctx.globalAlpha = Math.max(0,.9-G.zapT*0.7);
+      // Screen Flash with hero's glow
+      ctx.fillStyle = hero.glow;
+      ctx.globalAlpha = Math.max(0,.85-G.zapT*0.6);
       ctx.fillRect(0,0,W,H);
       ctx.globalAlpha = 1;
 
-      // Golden Holy Energy Blast pushing Nagavalli back
-      ctx.strokeStyle = "#ffd700";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(G.heroX + 32, 122);
-      ctx.lineTo(currentBx + 16, 122);
-      ctx.stroke();
-
-      // Energy particles striking Nagavalli backwards
-      for(let i=0;i<14;i++){
-        R(currentBx + rnd(-5,35), 118 + rnd(-28,28), 3, 3, (i%2) ? "#ffd700" : "#ff4a6e");
+      // Unique weapon / energy beam per hero!
+      if(G.lvl === 0){
+        // Sunny: Golden Exorcism Holy Beam
+        ctx.strokeStyle = "#ffd700";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(G.heroX + 32, 122);
+        ctx.lineTo(currentBx + 16, 122);
+        ctx.stroke();
+        for(let i=0;i<12;i++){ R(currentBx + rnd(-5,35), 118 + rnd(-28,28), 3, 3, (i%2) ? "#ffd700" : "#ff4a6e"); }
+      } else if(G.lvl === 1){
+        // Thevan: Emerald Paanan Martial Strike Waves
+        ctx.strokeStyle = "#4ade80";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(G.heroX + 28, 124, 18 + (G.zapT*50)%40, -1.2, 1.2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(G.heroX + 32, 124);
+        ctx.lineTo(currentBx + 16, 124);
+        ctx.stroke();
+        for(let i=0;i<14;i++){ R(currentBx + rnd(-5,35), 118 + rnd(-28,28), 3, 3, (i%2) ? "#4ade80" : "#fbbf24"); }
+      } else if(G.lvl === 2){
+        // Arun: Gunshot Muzzle Flash & High-velocity bullet tracer
+        // Muzzle flash
+        if(G.zapT < 0.4 || (G.zapT > 0.8 && G.zapT < 1.1)){
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(G.heroX + 36, 118, 9, 0, 6.3);
+          ctx.fill();
+          ctx.fillStyle = "#fbbf24";
+          ctx.beginPath();
+          ctx.arc(G.heroX + 36, 118, 5, 0, 6.3);
+          ctx.fill();
+        }
+        // Bullet tracer line
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(G.heroX + 36, 118);
+        ctx.lineTo(currentBx + 18, 118);
+        ctx.stroke();
+        for(let i=0;i<16;i++){ R(currentBx + rnd(-8,30), 116 + rnd(-20,20), 2, 2, (i%2) ? "#fbbf24" : "#fff"); }
+      } else {
+        // Fallback energy
+        ctx.strokeStyle = hero.glow;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(G.heroX + 28, 122);
+        ctx.lineTo(currentBx + 18, 122);
+        ctx.stroke();
       }
 
-      // SHOUTING "GANGEEE!!!" from Sunny
+      // Shouting speech bubble above Hero
+      const shoutText = hero.shout || "BEGONE!";
       const shakeX = (Math.random() - 0.5) * 4;
       const shakeY = (Math.random() - 0.5) * 4;
-      const bubbleX = G.heroX + 22 + shakeX;
+      const bubbleW = Math.max(76, shoutText.length * 8 + 14);
+      const bubbleX = G.heroX + 24 + shakeX;
       const bubbleY = 72 + shakeY;
 
-      // Speech bubble background
       ctx.fillStyle = "#fff8db";
       ctx.strokeStyle = "#b3264f";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.rect(bubbleX - 38, bubbleY - 14, 76, 20);
+      ctx.rect(bubbleX - bubbleW/2, bubbleY - 14, bubbleW, 20);
       ctx.fill();
       ctx.stroke();
 
-      // Bubble pointer down to Sunny
+      // Bubble pointer down to hero
       ctx.beginPath();
       ctx.moveTo(bubbleX - 6, bubbleY + 6);
       ctx.lineTo(bubbleX, bubbleY + 14);
@@ -463,10 +541,10 @@ function drawFight(){
       ctx.stroke();
 
       // Bold shouting text
-      ctx.font = "bold 9px 'Press Start 2P', monospace";
+      ctx.font = "bold 8px 'Press Start 2P', monospace";
       ctx.textAlign = "center";
       ctx.fillStyle = "#b3264f";
-      ctx.fillText("GANGEEE!", bubbleX, bubbleY);
+      ctx.fillText(shoutText, bubbleX, bubbleY);
     }
   }
 }
@@ -491,13 +569,13 @@ function update(dt){
       if(G.heroX>=bx-34){
         G.phase="zap";
         G.zapT=0;
-        playSunnyShout();
+        playDefeatAudio(G.lvl);
       }
     }
     else if(G.phase==="zap"){
       G.zapT+=dt;
-      // After Nagavalli retreats back and shout completes, proceed
-      if(G.zapT>1.85) bossDown();
+      const zapLimit = (G.lvl === 1 ? 2.5 : (G.lvl === 2 ? 2.0 : 1.9));
+      if(G.zapT > zapLimit) bossDown();
     }
   }
 }
@@ -513,7 +591,10 @@ function loop(ts){const dt=Math.min((ts-lastTs)/1000||0,.05);lastTs=ts;update(dt
 function showTitle(){
   G.state="title";
   showPanel(`<h1>KAAVU<br>HALLOWEEN NIGHT</h1>
-    <div>Enter the cursed gates of <span style="color:#ffd700">Madampalli Mana</span>.<br>Summon <span style="color:#ffd700">Sunny</span> to shout & banish <span style="color:#ff8fa8">Nagavalli</span>!<br>Solve the randomized doors to call for help!</div>
+    <div>5 haunted levels. Iconic battles.<br>
+    L1: <span style="color:#ffd700">Sunny</span> vs <span style="color:#ff8fa8">Nagavalli</span><br>
+    L2: <span style="color:#4ade80">Thevan</span> vs <span style="color:#fbbf24">Koduman Potti</span><br>
+    L3: <span style="color:#60a5fa">Arun</span> vs <span style="color:#e5e7eb">Christopher</span></div>
     <div class="row"><button id="go">START GAME</button></div>
     <div style="color:#8fb">← → move · E / Enter = open door</div>`);
   document.getElementById("go").onclick=()=>{
@@ -526,11 +607,18 @@ function showTitle(){
 function startLevel(){
   G.state="walk";G.px=20;G.timer=BOSS_TIME;helpBtn.style.display="none";
   const L=theme();
-  const preview = L.hero.img ? `
+  const boss = L.bosses[0];
+  const preview = (L.hero.img && boss.img) ? `
     <div style="display:flex;justify-content:center;gap:18px;align-items:center;margin:6px 0">
-      <div style="text-align:center"><img src="assets/${L.hero.img}.png" style="height:54px;image-rendering:pixelated;filter:drop-shadow(0 0 6px ${L.hero.glow})"><div style="font-size:8px;color:${L.hero.glow};margin-top:3px">${L.hero.name}</div></div>
+      <div style="text-align:center">
+        <img src="assets/${L.hero.img}.png" style="height:56px;image-rendering:pixelated;filter:drop-shadow(0 0 6px ${L.hero.glow})">
+        <div style="font-size:8px;color:${L.hero.glow};margin-top:3px">${L.hero.name}</div>
+      </div>
       <div style="font-size:11px;color:#ff8fa8">VS</div>
-      <div style="text-align:center"><img src="assets/nagavalli.png" style="height:54px;image-rendering:pixelated;filter:drop-shadow(0 0 6px #f44)"><div style="font-size:8px;color:#ff8fa8;margin-top:3px">Nagavalli</div></div>
+      <div style="text-align:center">
+        <img src="assets/${boss.img}.png" style="height:56px;image-rendering:pixelated;filter:drop-shadow(0 0 6px #f44)">
+        <div style="font-size:8px;color:#ff8fa8;margin-top:3px">${boss.name}</div>
+      </div>
     </div>` : ``;
 
   showPanel(`<h2>LEVEL ${G.lvl+1}</h2><h1 style="font-size:clamp(12px,2.6vw,22px)">${L.name}</h1>
@@ -563,7 +651,7 @@ function enterDoor(i){
   G.currentPuzzle = G.doorPuzzles ? G.doorPuzzles[i] : ALL_PUZZLE_TYPES[i];
   G.state="fight";G.phase="wait";G.timer=BOSS_TIME;G.heroX=-30;
   const boss=theme().bosses[i];
-  const bossImg = boss.img ? `<div style="margin:4px 0"><img src="assets/${boss.img}.png" style="height:54px;image-rendering:pixelated;filter:drop-shadow(0 0 8px #f33)"></div>` : ``;
+  const bossImg = boss.img ? `<div style="margin:4px 0"><img src="assets/${boss.img}.png" style="height:56px;image-rendering:pixelated;filter:drop-shadow(0 0 8px #f33)"></div>` : ``;
 
   showPanel(`<h2>${boss.name.toUpperCase()} APPEARS!</h2>
     ${bossImg}
@@ -575,7 +663,7 @@ function enterDoor(i){
 function caught(){
   G.lives--;helpBtn.style.display="none";
   if(G.lives<=0){ G.state="over";
-    showPanel(`<h1>YOU WERE CAUGHT</h1><div>Madampalli Mana claims another soul...</div><div class="row"><button class="alt" id="go">TRY AGAIN</button></div>`);
+    showPanel(`<h1>YOU WERE CAUGHT</h1><div>${theme().name} claims another soul...</div><div class="row"><button class="alt" id="go">TRY AGAIN</button></div>`);
     document.getElementById("go").onclick=showTitle; return; }
   G.state="walk";G.px=20;
   showPanel(`<h2>CAUGHT!</h2><div>Lives left: ${"♥".repeat(G.lives)}</div><div class="row"><button id="go">BACK TO THE DOORS</button></div>`);
@@ -583,11 +671,12 @@ function caught(){
 }
 
 function bossDown(){
+  const defeatedBoss = theme().bosses[G.door].name;
   G.keys++;G.lvl++;G.state="walk";G.phase="wait";helpBtn.style.display="none";
   if(G.lvl>=LEVELS.length){
-    showPanel(`<h1>YOU WIN!</h1><div>All spirits banished from Madampalli Mana.<br>Dawn breaks over the kaavu. Happy Halloween!</div><div class="row"><button id="go">PLAY AGAIN</button></div>`);
+    showPanel(`<h1>YOU WIN!</h1><div>All spirits and villains banished.<br>Dawn breaks over the kaavu. Happy Halloween!</div><div class="row"><button id="go">PLAY AGAIN</button></div>`);
     document.getElementById("go").onclick=showTitle; return; }
-  showPanel(`<h2>NAGAVALLI BANISHED!</h2><div>Key collected (${G.keys} / 5 keys)</div><div class="row"><button id="go">NEXT LEVEL</button></div>`);
+  showPanel(`<h2>${defeatedBoss.toUpperCase()} DEFEATED!</h2><div>Key collected (${G.keys} / 5 keys)</div><div class="row"><button id="go">NEXT LEVEL</button></div>`);
   document.getElementById("go").onclick=startLevel;
 }
 
@@ -649,7 +738,6 @@ const hold=(id,k)=>{const b=document.getElementById(id);["pointerdown"].forEach(
 hold("bL","left");hold("bR","right");
 document.getElementById("bA").addEventListener("pointerdown",e=>{initAudio();e.preventDefault();action()});
 
-// User click anywhere unlocks audio
 document.addEventListener("click", ()=>initAudio(), {once:true});
 
 showTitle(); requestAnimationFrame(loop);
