@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kaavu: Halloween Night</title>
+<title>Kaavu: Madampalli Mana - Halloween Night</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#0b1d21;--ink:#e9f3ee;--gold:#f2b84b;--red:#b3264f;--teal:#1f6f73}
@@ -11,6 +11,9 @@
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Press Start 2P',monospace}
   #wrap{position:relative;max-width:960px;margin:0 auto;user-select:none;-webkit-user-select:none}
   canvas{width:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;background:#000}
+  #soundBtn{position:absolute;top:8px;right:8px;background:rgba(5,15,18,.85);color:var(--gold);border:2px solid var(--gold);
+    padding:6px 10px;font-size:9px;cursor:pointer;z-index:20;display:flex;align-items:center;gap:4px}
+  #soundBtn:hover{background:var(--red);color:#fff}
   #panel{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;
     background:rgba(5,15,18,.88);text-align:center;padding:14px;gap:12px;font-size:clamp(8px,1.6vw,13px);line-height:1.7}
   #panel h1{font-size:clamp(14px,3.4vw,28px);margin:0;color:var(--gold);text-shadow:3px 3px 0 var(--red)}
@@ -35,6 +38,7 @@
 <body>
 <div id="wrap">
   <canvas id="c" width="320" height="180"></canvas>
+  <button id="soundBtn">🔊 AUDIO: ON</button>
   <button id="help" class="alt">CALL FOR HELP</button>
   <div id="panel"></div>
 </div>
@@ -44,12 +48,135 @@
 
 <script>
 /* ============================================================
-   KAAVU: HALLOWEEN NIGHT  –  Level 1: Sunny & Nagavalli
+   KAAVU: HALLOWEEN NIGHT  –  Madampalli Mana (Sunny & Nagavalli)
    ============================================================ */
 const W = 320, H = 180;
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
-const panel = document.getElementById('panel'), helpBtn = document.getElementById('help');
+const panel = document.getElementById('panel'), helpBtn = document.getElementById('help'), soundBtn = document.getElementById('soundBtn');
+
+/* ---------- AUDIO: SHOUT & HORROR MUSIC ENGINE ---------- */
+let audioEnabled = true;
+const shoutAudio = new Audio('assets/sunny_shout.mp3');
+shoutAudio.preload = 'auto';
+
+// Web Audio API Horror Music Synthesizer
+let audioCtx = null;
+let musicInterval = null;
+let droneOsc1 = null, droneOsc2 = null, droneGain = null;
+
+function initAudio(){
+  if(audioCtx) return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContextClass();
+    startHorrorMusic();
+  } catch(e){
+    console.log("AudioContext not supported", e);
+  }
+}
+
+function startHorrorMusic(){
+  if(!audioCtx || !audioEnabled) return;
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  if(droneOsc1) return; // already playing
+
+  // 1. Deep Sub-Bass Horror Drone
+  const masterMusicGain = audioCtx.createGain();
+  masterMusicGain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+  masterMusicGain.connect(audioCtx.destination);
+  droneGain = masterMusicGain;
+
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(140, audioCtx.currentTime);
+  filter.connect(masterMusicGain);
+
+  droneOsc1 = audioCtx.createOscillator();
+  droneOsc1.type = "sawtooth";
+  droneOsc1.frequency.setValueAtTime(55, audioCtx.currentTime); // low A1 note
+  droneOsc1.connect(filter);
+  droneOsc1.start();
+
+  droneOsc2 = audioCtx.createOscillator();
+  droneOsc2.type = "triangle";
+  droneOsc2.frequency.setValueAtTime(57.5, audioCtx.currentTime); // eerie binaural detune
+  droneOsc2.connect(filter);
+  droneOsc2.start();
+
+  // 2. Haunting horror notes (diminished / harmonic minor bell tones)
+  const horrorNotes = [
+    523.25, 554.37, 659.25, 698.46, 783.99, 830.61, 987.77, 1046.50
+  ];
+  let noteStep = 0;
+  musicInterval = setInterval(()=>{
+    if(!audioEnabled || !audioCtx || G.state === "over") return;
+    const isFight = (G.state === "fight");
+    
+    // Play eerie glass bell tone
+    if(Math.random() > (isFight ? 0.15 : 0.35)){
+      const freq = horrorNotes[noteStep % horrorNotes.length];
+      playHorrorBell(freq, isFight ? 0.14 : 0.08);
+      noteStep = (noteStep + (Math.random() > 0.4 ? 1 : 2)) % horrorNotes.length;
+    }
+
+    // Creepy heartbeat thud
+    playHeartbeat(isFight);
+  }, 450);
+}
+
+function playHorrorBell(freq, vol){
+  if(!audioCtx || !audioEnabled) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 1.25);
+}
+
+function playHeartbeat(isFight){
+  if(!audioCtx || !audioEnabled) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(isFight ? 75 : 55, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.18);
+
+  const vol = isFight ? 0.35 : 0.16;
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.25);
+}
+
+function playSunnyShout(){
+  if(!audioEnabled) return;
+  try {
+    shoutAudio.currentTime = 0;
+    shoutAudio.play().catch(e => console.log("Shout play failed:", e));
+  } catch(e){}
+}
+
+soundBtn.onclick = ()=>{
+  audioEnabled = !audioEnabled;
+  soundBtn.textContent = audioEnabled ? "🔊 AUDIO: ON" : "🔇 AUDIO: MUTED";
+  if(!audioEnabled){
+    if(droneGain) droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  } else {
+    initAudio();
+    if(droneGain && audioCtx) droneGain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+  }
+};
 
 /* ---------- PRELOAD ASSETS ---------- */
 const IMGS = {};
@@ -63,7 +190,7 @@ loadGameImage("nagavalli", "assets/nagavalli.png");
 
 /* ---------- GAME DATA ---------- */
 const LEVELS = [
-  { name: "Tharavad of Whispers", sky: "#123a40", tree: "#8c2347",
+  { name: "Madampalli Mana", sky: "#123a40", tree: "#8c2347",
     hero: { name: "Sunny", robe: "#b32626", glow: "#ffd700", img: "sunny" },
     bosses: [
       { name: "Nagavalli", col: "#e8c850", f: "hair", img: "nagavalli" },
@@ -95,6 +222,7 @@ const ALL_PUZZLE_TYPES = ["math", "memory", "riddle"];
 const TRIVIA = [
   ["In Manichitrathazhu, which spirit haunts the Thekkini?", ["Nagavalli","Kuttichathan","Karinkali"], 0],
   ["Who played the iconic exorcist Dr. Sunny?", ["Mohanlal","Mammootty","Suresh Gopi"], 0],
+  ["What is the ancestral palace called in Manichitrathazhu?", ["Madampalli Mana","Varikkasseri","Arakkal"], 0],
   ["Onam sadya is served on which leaf?", ["Banana leaf","Teak leaf","Lotus leaf"], 0],
   ["Kathakali is a classical art of which state?", ["Kerala","Punjab","Assam"], 0],
   ["'Chakka' is the Malayalam word for which fruit?", ["Jackfruit","Mango","Papaya"], 0],
@@ -102,7 +230,6 @@ const TRIVIA = [
   ["Vallam Kali is a famous ___ race.", ["Boat","Bull","Horse"], 0],
   ["Pookkalam is made during which festival?", ["Onam","Holi","Pongal"], 0],
   ["Which coconut-oil-rich cuisine is Kerala known for?", ["Appam & stew","Pav bhaji","Dhokla"], 0],
-  ["The giant Chinese fishing nets are in?", ["Fort Kochi","Jaipur","Hampi"], 0],
 ];
 const BOSS_TIME = 29;
 
@@ -204,13 +331,13 @@ function drawBoss(x,y,b,t,alpha){
     const sy = 148 - sh + floatY;
     
     // Ghostly Yakshi aura
-    ctx.fillStyle = "rgba(255, 60, 60, 0.25)";
+    ctx.fillStyle = (G.phase === "zap") ? "rgba(255, 120, 40, 0.4)" : "rgba(255, 60, 60, 0.25)";
     ctx.beginPath();
     ctx.arc(x + sw/2, sy + sh/2, 30, 0, 6.3);
     ctx.fill();
     
-    // Zap shake effect
-    const shake = (G.phase === "zap") ? (Math.random() - 0.5) * 5 : 0;
+    // Zap defeat shake & spin
+    const shake = (G.phase === "zap") ? (Math.random() - 0.5) * 6 : 0;
     ctx.drawImage(img, Math.round(x + shake), Math.round(sy), sw, sh);
   } else {
     // Procedural Fallback Sprite
@@ -273,30 +400,73 @@ function drawFight(){
   drawBackground(G.t); drawFog(G.t);
   ctx.fillStyle="rgba(120,0,40,"+(0.18*(1-G.timer/BOSS_TIME))+")"; ctx.fillRect(0,0,W,H);
   const boss = theme().bosses[G.door];
-  const bx = 70 + 180*Math.max(0,G.timer/BOSS_TIME);
-  const alpha = G.phase==="zap" ? Math.max(0,1-G.zapT/1.1) : 1;
+  
+  // Base boss X position
+  const baseX = 70 + 180*Math.max(0,G.timer/BOSS_TIME);
+  // When zapped, Nagavalli gets defeated and retreats backwards off the screen to the right!
+  const retreatX = (G.phase === "zap") ? (G.zapT * 110) : 0;
+  const currentBx = baseX + retreatX;
+  const alpha = G.phase==="zap" ? Math.max(0,1-G.zapT/1.8) : 1;
+
   drawPlayer(24,130,G.t,1);
-  drawBoss(bx, 108 + Math.sin(G.t*3)*3, boss, G.t, alpha);
-  txt(boss.name,bx+18,92,7,"#ff9db2",'center');
+  drawBoss(currentBx, 108 + Math.sin(G.t*3)*3, boss, G.t, alpha);
+  if(alpha > 0.2){
+    txt(boss.name, currentBx+18, 92, 7, "#ff9db2", 'center');
+  }
 
   if(G.phase==="hero"||G.phase==="zap"){
     drawHero(G.heroX,112,theme().hero,G.t);
     txt(theme().hero.name,G.heroX+18,92,7,theme().hero.glow,'center');
-    if(G.phase==="zap"){
-      ctx.fillStyle=theme().hero.glow;
-      ctx.globalAlpha=Math.max(0,.9-G.zapT);
-      ctx.fillRect(0,0,W,H);
-      ctx.globalAlpha=1;
 
-      // Golden exorcism beam from Sunny to Nagavalli
+    if(G.phase==="zap"){
+      // Screen Exorcism Flash
+      ctx.fillStyle = theme().hero.glow;
+      ctx.globalAlpha = Math.max(0,.9-G.zapT*0.7);
+      ctx.fillRect(0,0,W,H);
+      ctx.globalAlpha = 1;
+
+      // Golden Holy Energy Blast pushing Nagavalli back
       ctx.strokeStyle = "#ffd700";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(G.heroX + 32, 122);
-      ctx.lineTo(bx + 18, 122);
+      ctx.lineTo(currentBx + 16, 122);
       ctx.stroke();
 
-      for(let i=0;i<12;i++){R(bx+rnd(0,36),120+rnd(-24,24),3,3,theme().hero.glow)}
+      // Energy particles striking Nagavalli backwards
+      for(let i=0;i<14;i++){
+        R(currentBx + rnd(-5,35), 118 + rnd(-28,28), 3, 3, (i%2) ? "#ffd700" : "#ff4a6e");
+      }
+
+      // SHOUTING "GANGEEE!!!" from Sunny
+      const shakeX = (Math.random() - 0.5) * 4;
+      const shakeY = (Math.random() - 0.5) * 4;
+      const bubbleX = G.heroX + 22 + shakeX;
+      const bubbleY = 72 + shakeY;
+
+      // Speech bubble background
+      ctx.fillStyle = "#fff8db";
+      ctx.strokeStyle = "#b3264f";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.rect(bubbleX - 38, bubbleY - 14, 76, 20);
+      ctx.fill();
+      ctx.stroke();
+
+      // Bubble pointer down to Sunny
+      ctx.beginPath();
+      ctx.moveTo(bubbleX - 6, bubbleY + 6);
+      ctx.lineTo(bubbleX, bubbleY + 14);
+      ctx.lineTo(bubbleX + 6, bubbleY + 6);
+      ctx.fillStyle = "#fff8db";
+      ctx.fill();
+      ctx.stroke();
+
+      // Bold shouting text
+      ctx.font = "bold 9px 'Press Start 2P', monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#b3264f";
+      ctx.fillText("GANGEEE!", bubbleX, bubbleY);
     }
   }
 }
@@ -316,11 +486,19 @@ function update(dt){
   if(G.state==="fight"){
     if(G.phase==="wait"){ G.timer-=dt; if(G.timer<=0) caught(); }
     else if(G.phase==="hero"){
-      G.heroX+=130*dt;
+      G.heroX+=140*dt;
       const bx=70+180*Math.max(0,G.timer/BOSS_TIME);
-      if(G.heroX>=bx-32){G.phase="zap";G.zapT=0}
+      if(G.heroX>=bx-34){
+        G.phase="zap";
+        G.zapT=0;
+        playSunnyShout();
+      }
     }
-    else if(G.phase==="zap"){ G.zapT+=dt; if(G.zapT>1.3) bossDown(); }
+    else if(G.phase==="zap"){
+      G.zapT+=dt;
+      // After Nagavalli retreats back and shout completes, proceed
+      if(G.zapT>1.85) bossDown();
+    }
   }
 }
 function draw(){
@@ -335,10 +513,14 @@ function loop(ts){const dt=Math.min((ts-lastTs)/1000||0,.05);lastTs=ts;update(dt
 function showTitle(){
   G.state="title";
   showPanel(`<h1>KAAVU<br>HALLOWEEN NIGHT</h1>
-    <div>5 haunted levels. 15 spooky encounters.<br>Summon <span style="color:#ffd700">Sunny</span> to banish <span style="color:#ff8fa8">Nagavalli</span>!<br>Solve the puzzle behind each door to call for help!</div>
-    <div class="row"><button id="go">START</button></div>
+    <div>Enter the cursed gates of <span style="color:#ffd700">Madampalli Mana</span>.<br>Summon <span style="color:#ffd700">Sunny</span> to shout & banish <span style="color:#ff8fa8">Nagavalli</span>!<br>Solve the randomized doors to call for help!</div>
+    <div class="row"><button id="go">START GAME</button></div>
     <div style="color:#8fb">← → move · E / Enter = open door</div>`);
-  document.getElementById("go").onclick=()=>{G.lvl=0;G.lives=3;G.keys=0;startLevel()};
+  document.getElementById("go").onclick=()=>{
+    initAudio();
+    G.lvl=0;G.lives=3;G.keys=0;
+    startLevel();
+  };
 }
 
 function startLevel(){
@@ -355,11 +537,14 @@ function startLevel(){
     ${preview}
     <div>Your ally this level:<br><span style="color:${L.hero.glow}">${L.hero.name}</span></div>
     <div class="row"><button id="go">ENTER THE HOUSE</button></div>`);
-  document.getElementById("go").onclick=closePanel;
+  document.getElementById("go").onclick=()=>{
+    initAudio();
+    closePanel();
+  };
 }
 
 function showDoors(){
-  // Randomize puzzles for Door 1, Door 2, and Door 3 initially upon opening
+  // Randomize Door 1, Door 2, and Door 3 puzzle types initially upon opening
   G.doorPuzzles = shuffle(ALL_PUZZLE_TYPES);
 
   showPanel(`<h2>CHOOSE A DOOR</h2><div>Each door holds a random challenge...</div>
@@ -374,7 +559,7 @@ function showDoors(){
 
 function enterDoor(i){
   G.door=i;
-  // Use randomized puzzle type for this door
+  // Use randomized puzzle for this specific door
   G.currentPuzzle = G.doorPuzzles ? G.doorPuzzles[i] : ALL_PUZZLE_TYPES[i];
   G.state="fight";G.phase="wait";G.timer=BOSS_TIME;G.heroX=-30;
   const boss=theme().bosses[i];
@@ -390,7 +575,7 @@ function enterDoor(i){
 function caught(){
   G.lives--;helpBtn.style.display="none";
   if(G.lives<=0){ G.state="over";
-    showPanel(`<h1>YOU WERE CAUGHT</h1><div>The kaavu claims another soul...</div><div class="row"><button class="alt" id="go">TRY AGAIN</button></div>`);
+    showPanel(`<h1>YOU WERE CAUGHT</h1><div>Madampalli Mana claims another soul...</div><div class="row"><button class="alt" id="go">TRY AGAIN</button></div>`);
     document.getElementById("go").onclick=showTitle; return; }
   G.state="walk";G.px=20;
   showPanel(`<h2>CAUGHT!</h2><div>Lives left: ${"♥".repeat(G.lives)}</div><div class="row"><button id="go">BACK TO THE DOORS</button></div>`);
@@ -400,9 +585,9 @@ function caught(){
 function bossDown(){
   G.keys++;G.lvl++;G.state="walk";G.phase="wait";helpBtn.style.display="none";
   if(G.lvl>=LEVELS.length){
-    showPanel(`<h1>YOU WIN!</h1><div>All spirits banished.<br>Dawn breaks over the kaavu. Happy Halloween!</div><div class="row"><button id="go">PLAY AGAIN</button></div>`);
+    showPanel(`<h1>YOU WIN!</h1><div>All spirits banished from Madampalli Mana.<br>Dawn breaks over the kaavu. Happy Halloween!</div><div class="row"><button id="go">PLAY AGAIN</button></div>`);
     document.getElementById("go").onclick=showTitle; return; }
-  showPanel(`<h2>KEY COLLECTED!</h2><div>${G.keys} / 5 keys</div><div class="row"><button id="go">NEXT LEVEL</button></div>`);
+  showPanel(`<h2>NAGAVALLI BANISHED!</h2><div>Key collected (${G.keys} / 5 keys)</div><div class="row"><button id="go">NEXT LEVEL</button></div>`);
   document.getElementById("go").onclick=startLevel;
 }
 
@@ -451,6 +636,7 @@ function memoryPuzzle(){
 /* ---------- INPUT ---------- */
 function action(){ if(G.state==="walk"&&!panelOpen()&&nearDoor()) showDoors(); }
 addEventListener("keydown",e=>{
+  initAudio();
   if(["ArrowLeft","a","A"].includes(e.key))keys.left=true;
   if(["ArrowRight","d","D"].includes(e.key))keys.right=true;
   if(["e","E","Enter"," "].includes(e.key)){ if(!panelOpen()) {action(); e.preventDefault()} }
@@ -459,9 +645,12 @@ addEventListener("keyup",e=>{
   if(["ArrowLeft","a","A"].includes(e.key))keys.left=false;
   if(["ArrowRight","d","D"].includes(e.key))keys.right=false;
 });
-const hold=(id,k)=>{const b=document.getElementById(id);["pointerdown"].forEach(ev=>b.addEventListener(ev,e=>{e.preventDefault();keys[k]=true}));["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,()=>keys[k]=false))};
+const hold=(id,k)=>{const b=document.getElementById(id);["pointerdown"].forEach(ev=>b.addEventListener(ev,e=>{initAudio();e.preventDefault();keys[k]=true}));["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,()=>keys[k]=false))};
 hold("bL","left");hold("bR","right");
-document.getElementById("bA").addEventListener("pointerdown",e=>{e.preventDefault();action()});
+document.getElementById("bA").addEventListener("pointerdown",e=>{initAudio();e.preventDefault();action()});
+
+// User click anywhere unlocks audio
+document.addEventListener("click", ()=>initAudio(), {once:true});
 
 showTitle(); requestAnimationFrame(loop);
 </script>
